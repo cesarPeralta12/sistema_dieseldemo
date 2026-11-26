@@ -1,6 +1,20 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { Estado, Partida, EstadoVale, Vale } from '../dominio/tipos'
 import { litrosVale, montoVale } from '../dominio/reglas'
+import QRCode from 'qrcode'
+
+/** Código del QR. En el sistema final será un token aleatorio guardado en la base; aquí se deriva del número. */
+export function codigoQR(numero: number) {
+  let h = 2166136261
+  for (const ch of 'vale-' + numero) h = Math.imul(h ^ ch.charCodeAt(0), 16777619)
+  return `DV-${numero}-${(h >>> 0).toString(36).toUpperCase()}`
+}
+export function Qr({ texto }: { texto: string }) {
+  const q = QRCode.create(texto, { errorCorrectionLevel: 'M' }).modules, n = q.size
+  let d = ''
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (q.get(y, x)) d += `M${x + 2} ${y + 2}h1v1h-1z`
+  return <svg className="qr" viewBox={`0 0 ${n + 4} ${n + 4}`} role="img" aria-label={'Código QR ' + texto} shapeRendering="crispEdges"><rect width={n + 4} height={n + 4} fill="#fff" /><path d={d} fill="#14272e" /></svg>
+}
 
 const nf = new Intl.NumberFormat('es-BO', { maximumFractionDigits: 2 })
 export const num = (n: number) => nf.format(n)
@@ -55,7 +69,7 @@ export function Ticket({ s, v }: { s: Estado; v: Omit<Vale, 'id' | 'emitidoPor'>
     <div className="ticket-talon">
       <strong>{num(litrosVale(v as Vale))}</strong><span>litros</span>
       {v.precio > 0 && <em>{bs(montoVale(v as Vale))}</em>}
-      <div className="barras" aria-hidden="true" />
+      {v.numero > 0 && <><Qr texto={codigoQR(v.numero)} /><code>{codigoQR(v.numero)}</code></>}
     </div>
   </article>
 }

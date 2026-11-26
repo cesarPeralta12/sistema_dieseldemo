@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useApp } from '../store'
-import { adeudado, agregarCobros, comparar, conciliarFila, diasEntre, kardex, montoVale, puede, saldo, sumarDias, verificarVale, type Fila, type Resultado } from '../dominio/reglas'
+import { adeudado, agregarCobros, comparar, conciliarFila, diasEntre, kardex, litrosVale, montoVale, puede, saldo, sumarDias, verificarVale, type Fila, type Resultado } from '../dominio/reglas'
 import type { TipoMov, Vale } from '../dominio/tipos'
 import { Campo, Elegir, Marca, Modal, Titulo, Vacio, bs, de, fecha, num } from '../ui/ui'
 
@@ -70,13 +70,75 @@ export function Adeudado() {
     <div className="tabla"><table><thead><tr><th>Estación</th><th>Ciudad</th><th className="n">Vales conciliados</th><th className="n">Monto conciliado</th><th className="n">Vales pendientes</th><th className="n">Monto pendiente</th><th className="n">Total</th></tr></thead><tbody>{l.map(x => <tr key={x.estacion.id}><td><b>{x.estacion.nombre}</b></td><td>{de.ciudad(s, x.estacion.ciudadId)}</td><td className="n">{x.conciliado.n}</td><td className="n">{bs(x.conciliado.monto)}</td><td className="n">{x.pendiente.n}</td><td className="n">{bs(x.pendiente.monto)}</td><td className="n"><b>{bs(x.total)}</b></td></tr>)}</tbody><tfoot><tr><td colSpan={6}>Total</td><td className="n">{bs(l.reduce((a, x) => a + x.total, 0))}</td></tr></tfoot></table></div></>
 }
 
+const ESTADOS = [['pendiente', 'Sin cerrar', 'ambar'], ['verificado', 'Verificado', 'verde'], ['conciliado', 'Conciliado', 'verde2'], ['interno', 'Surtidor interno', 'gris']] as const
+
 export function Resumen() {
   const { s } = useApp()
-  const dias = Array.from({ length: 13 }, (_, i) => sumarDias(s.hoy, i - 12)).map(f => ({ f, l: s.vales.filter(v => v.fecha === f && v.estado !== 'anulado').reduce((a, v) => a + v.litros, 0) })), max = Math.max(...dias.map(d => d.l), 1)
-  const pend = s.vales.filter(v => v.estado === 'pendiente'), viejos = pend.filter(v => diasEntre(v.fecha, s.hoy) > 7), arr = s.vales.filter(v => v.estado !== 'anulado' && v.partida !== 'partio' && v.fecha < s.hoy)
-  const lic = s.choferes.filter(c => c.vence < sumarDias(s.hoy, 30))
-  return <><Titulo t="Resumen" sub={fecha(s.hoy, true)} />
-    <h2>Tanques de garaje</h2><div className="tanques">{s.tanques.map(t => { const x = saldo(s, 'tanque', t.id), b = x < t.minimo; return <div key={t.id} className="tanque"><div className="cilindro" role="img" aria-label={`${Math.round(x / t.capacidad * 100)} % lleno`}><i className={b ? 'bajo' : ''} style={{ height: x / t.capacidad * 100 + '%' }} /><u style={{ bottom: t.minimo / t.capacidad * 100 + '%' }} /></div><div><b>{t.nombre}</b><span>{de.ciudad(s, t.ciudadId)}</span><strong>{num(x)} L</strong><span>de {num(t.capacidad)} L</span>{b && <Marca c="rojo">Bajo el mínimo</Marca>}</div></div> })}</div>
-    <div className="dos"><section><h2>Litros emitidos por día</h2><div className="columnas" role="img" aria-label="Litros emitidos en los últimos trece días">{dias.map(d => <div key={d.f} title={`${fecha(d.f)}: ${num(d.l)} L`}><i style={{ height: d.l / max * 150 }} /><small>{+d.f.slice(8)}</small></div>)}</div><p className="resumen">Hoy: <b>{num(dias.at(-1)!.l)} L</b>. Máximo del periodo: {num(max)} L.</p></section>
-      <section><h2>Por atender</h2><ul className="lista"><li><b className="cifra">{arr.length}</b><div><b>vales de buses que no partieron</b><small>Vienen de días anteriores</small></div></li><li><b className="cifra">{pend.length}</b><div><b>vales sin cerrar</b><small>{viejos.length} tienen más de siete días</small></div></li><li><b className="cifra">{s.cobros.filter(c => c.estado === 'pendiente').length}</b><div><b>cobros de aliadas por conciliar</b></div></li><li><b className="cifra">{lic.length}</b><div><b>licencias vencidas o por vencer</b><small>{lic.map(c => c.nombre).join(', ')}</small></div></li></ul></section></div></>
+  const [rango, setRango] = useState('14'), [ciudad, setCiudad] = useState('')
+  const n = +rango, desde = sumarDias(s.hoy, 1 - n)
+  const vs = s.vales.filter(v => v.estado !== 'anulado' && v.fecha >= desde && (!ciudad || v.ciudadId === ciudad))
+  const litros = vs.reduce((a, v) => a + litrosVale(v), 0), importe = vs.reduce((a, v) => a + (v.precio ? montoVale(v) : 0), 0)
+  const dias = Array.from({ length: n }, (_, i) => sumarDias(desde, i)).map(f => ({ f, l: vs.filter(v => v.fecha === f).reduce((a, v) => a + litrosVale(v), 0) }))
+  const maximo = Math.max(...dias.map(d => d.l)), tope = Math.max(1000, Math.ceil(maximo / 1000) * 1000)
+  const porCiudad = s.ciudades.map(c => ({ c, l: vs.filter(v => v.ciudadId === c.id).reduce((a, v) => a + litrosVale(v), 0) })).filter(x => x.l > 0).sort((a, b) => b.l - a.l)
+  const estados = ESTADOS.map(([e, nom, c]) => ({ e, nom, c, n: vs.filter(v => v.estado === e).length })), total = Math.max(1, vs.length)
+  const deuda = adeudado(s, desde, s.hoy)
+  const arr = s.vales.filter(v => v.estado !== 'anulado' && v.partida !== 'partio' && v.fecha < s.hoy)
+  const viejos = s.vales.filter(v => v.estado === 'pendiente' && diasEntre(v.fecha, s.hoy) > 7)
+  return <>
+    <Titulo t="Resumen" sub={`Del ${fecha(desde)} al ${fecha(s.hoy)}`}>
+      <Elegir vacio="Todas las ciudades" v={ciudad} on={setCiudad} ops={s.ciudades.map(c => [c.id, c.nombre])} />
+      <Elegir vacio={null} v={rango} on={setRango} ops={[['7', 'Últimos 7 días'], ['14', 'Últimos 14 días'], ['30', 'Últimos 30 días']]} />
+    </Titulo>
+    <div className="kpis">
+      <div><b>{num(litros)}</b><span>litros entregados</span></div>
+      <div><b>{bs(importe)}</b><span>importe en estaciones</span></div>
+      <div><b>{vs.length}</b><span>vales emitidos</span></div>
+      <div><b>{bs(deuda.reduce((a, x) => a + x.total, 0))}</b><span>adeudado a aliadas</span></div>
+    </div>
+    <p className="nota">Litros entregados con vale, no consumo real. Los saldos son administrativos, no medición física.</p>
+    <div className="paneles">
+      <section className="panel ancho">
+        <h2>Litros entregados por día</h2>
+        <div className="grafico" role="img" aria-label={`Litros por día, máximo ${num(maximo)}`}>
+          {[1, .5, 0].map(k => <div key={k} className="guia" style={{ bottom: k * 100 + '%' }}><span>{num(tope * k)}</span></div>)}
+          <div className="barras-dia">{dias.map(d => <div key={d.f} title={`${fecha(d.f)}: ${num(d.l)} L`}>
+            <i style={{ height: d.l / tope * 100 + '%' }} className={d.f === s.hoy ? 'hoy' : ''} /><small>{+d.f.slice(8)}</small>
+          </div>)}</div>
+        </div>
+      </section>
+      <section className="panel">
+        <h2>Por ciudad</h2>
+        <ul className="barras-h">{porCiudad.map(x => <li key={x.c.id}><span>{x.c.nombre}</span><div><i style={{ width: x.l / porCiudad[0].l * 100 + '%' }} /></div><b>{num(x.l)} L</b></li>)}</ul>
+        {!porCiudad.length && <Vacio>Sin vales en el periodo.</Vacio>}
+      </section>
+      <section className="panel">
+        <h2>Vales por estado</h2>
+        <div className="segmentos">{estados.map(x => x.n > 0 && <i key={x.e} className={x.c} style={{ flexGrow: x.n }} title={`${x.nom}: ${x.n}`} />)}</div>
+        <ul className="leyenda">{estados.map(x => <li key={x.e}><i className={x.c} />{x.nom}<b>{x.n}</b><span>{Math.round(x.n / total * 100)} %</span></li>)}</ul>
+      </section>
+      <section className="panel ancho">
+        <h2>Tanques de garaje</h2>
+        <div className="tanques">{s.tanques.map(t => {
+          const x = saldo(s, 'tanque', t.id), b = x < t.minimo
+          return <div key={t.id} className="tanque">
+            <div className="cilindro" role="img" aria-label={`${Math.round(x / t.capacidad * 100)} % lleno`}><i className={b ? 'bajo' : ''} style={{ height: x / t.capacidad * 100 + '%' }} /><u style={{ bottom: t.minimo / t.capacidad * 100 + '%' }} /></div>
+            <div><b>{t.nombre}</b><span>{de.ciudad(s, t.ciudadId)}</span><strong>{num(x)} L</strong><span>de {num(t.capacidad)} L</span>{b && <Marca c="rojo">Bajo el mínimo</Marca>}</div>
+          </div>
+        })}</div>
+      </section>
+      <section className="panel">
+        <h2>Adeudado por estación</h2>
+        <ul className="lista">{deuda.map(x => <li key={x.estacion.id}><div><b>{x.estacion.nombre}</b><small>{bs(x.conciliado.monto)} conciliado, {bs(x.pendiente.monto)} pendiente</small></div><b>{bs(x.total)}</b></li>)}</ul>
+      </section>
+      <section className="panel">
+        <h2>Por atender</h2>
+        <ul className="lista">
+          <li><b className="cifra">{arr.length}</b><div><b>vales de buses que no partieron</b><small>Vienen de días anteriores</small></div></li>
+          <li><b className="cifra">{s.vales.filter(v => v.estado === 'pendiente').length}</b><div><b>vales sin cerrar</b><small>{viejos.length} tienen más de siete días</small></div></li>
+          <li><b className="cifra">{s.cobros.filter(c => c.estado === 'pendiente').length}</b><div><b>cobros de aliadas por conciliar</b></div></li>
+        </ul>
+      </section>
+    </div>
+  </>
 }

@@ -23,12 +23,17 @@ export function Hoja() {
       {!u.ciudadId && <button aria-pressed={!c} onClick={() => setC('')}>Todas <i>{todas.length}</i></button>}
       {ciudades.map(x => { const n = todas.filter(t => t.vale.ciudadId === x.id), arr = n.some(t => t.dias > 0); return <button key={x.id} aria-pressed={c === x.id} onClick={() => setC(x.id)}>{x.nombre} <i className={arr ? 'arr' : ''}>{n.length}</i></button> })}
     </nav>
-    <p className="resumen"><b>{vivas.length}</b> vales, <b>{num(vivas.reduce((a, x) => a + litrosVale(x.vale), 0))}</b> litros. <b>{vivas.filter(x => x.partida === 'partio').length}</b> partieron y <b className="t-rojo">{vivas.filter(x => x.dias > 0).length}</b> vienen de días anteriores.</p>
+    <div className="kpis">
+      <div><b>{vivas.length}</b><span>vales en la hoja</span></div>
+      <div><b>{num(vivas.reduce((a, x) => a + litrosVale(x.vale), 0))}</b><span>litros asignados</span></div>
+      <div><b>{vivas.filter(x => x.partida === 'partio').length}</b><span>buses partieron</span></div>
+      <div className={vivas.some(x => x.dias > 0) ? 'alerta' : ''}><b>{vivas.filter(x => x.dias > 0).length}</b><span>vienen de días anteriores</span></div>
+    </div>
     {filas.length === 0 ? <Vacio>No hay vales para esta ciudad y fecha.</Vacio> :
-      <div className="tabla"><table><thead><tr><th>Vale</th><th>Bus</th><th>Ruta</th><th>Chofer</th><th>Carga en</th><th className="n">Litros</th><th>Partida</th><th /></tr></thead>
+      <div className="tabla"><table><thead><tr><th>Vale</th><th>Bus</th><th>Ruta</th><th>Chofer</th><th className="n">Litros</th><th>Partida</th><th /></tr></thead>
         <tbody>{filas.map(({ vale: x, dias, partida }) => <tr key={x.id} className={x.estado === 'anulado' ? 'anulado' : dias ? 'arrastre' : ''}>
-          <td><button className="enlace" onClick={() => setVer(x.id)}>{x.numero}</button>{dias > 0 && <small>Desde hace {dias} {dias === 1 ? 'día' : 'días'}</small>}</td>
-          <td><b className="interno">{de.bus(s, x.busId).interno}</b></td><td>{de.ruta(s, x.rutaId)}</td><td>{de.chofer(s, x.choferId)}</td><td>{de.origen(s, x)}</td>
+          <td><button className="enlace" onClick={() => setVer(x.id)}>{x.numero}</button>{dias > 0 && <small>Arrastra {dias} {dias === 1 ? 'día' : 'días'}</small>}</td>
+          <td><b className="interno">{de.bus(s, x.busId).interno}</b></td><td>{de.ruta(s, x.rutaId)}<span className="sec">{de.origen(s, x)}</span></td><td className="recorte" title={de.chofer(s, x.choferId)}>{de.chofer(s, x.choferId)}</td>
           <td className="n">{num(litrosVale(x))}</td><td>{x.estado === 'anulado' ? <MarcaEstado e="anulado" /> : <MarcaPartida p={partida} />}</td>
           <td className="fila-acc">{f === s.hoy && esAbierto(x) && puede(u, 'partida') && enAlcance(u, x.ciudadId) && <>
             <button onClick={() => ejecutar((s, u) => marcarPartida(s, u, x.id, 'partio'), `Bus ${de.bus(s, x.busId).interno}: partida registrada`)}>Partió</button>
@@ -80,8 +85,8 @@ export function Vales() {
   const v = s.vales.find(x => x.id === ver)
   return <><Titulo t="Vales emitidos" sub={`${l.length} vales`}><input type="search" placeholder="Buscar vale, bus, chofer o factura" value={q} onChange={x => setQ(x.target.value)} />
     <Elegir v={e} on={setE} vacio="Todos los estados" ops={[['pendiente', 'Sin cerrar'], ['verificado', 'Verificado'], ['conciliado', 'Conciliado'], ['interno', 'Surtidor interno'], ['anulado', 'Anulado']]} /></Titulo>
-    <div className="tabla"><table><thead><tr><th>Vale</th><th>Fecha</th><th>Bus</th><th>Ruta</th><th>Chofer</th><th>Carga en</th><th className="n">Litros</th><th>Partida</th><th>Estado</th></tr></thead><tbody>
-      {l.slice(0, 120).map(v => <tr key={v.id}><td><button className="enlace" onClick={() => setVer(v.id)}>{v.numero}</button></td><td>{fecha(v.fecha)}</td><td><b className="interno">{de.bus(s, v.busId).interno}</b></td><td>{de.ruta(s, v.rutaId)}</td><td>{de.chofer(s, v.choferId)}</td><td>{de.origen(s, v)}</td><td className="n">{num(litrosVale(v))}</td><td>{v.estado !== 'anulado' && <MarcaPartida p={v.partida} />}</td><td><MarcaEstado e={v.estado} /></td></tr>)}
+    <div className="tabla"><table><thead><tr><th>Vale</th><th>Fecha</th><th>Bus</th><th>Ruta</th><th>Chofer</th><th className="n">Litros</th><th>Partida</th><th>Estado</th></tr></thead><tbody>
+      {l.slice(0, 120).map(v => <tr key={v.id}><td><button className="enlace" onClick={() => setVer(v.id)}>{v.numero}</button></td><td>{fecha(v.fecha)}</td><td><b className="interno">{de.bus(s, v.busId).interno}</b></td><td>{de.ruta(s, v.rutaId)}<span className="sec">{de.origen(s, v)}</span></td><td className="recorte" title={de.chofer(s, v.choferId)}>{de.chofer(s, v.choferId)}</td><td className="n">{num(litrosVale(v))}</td><td>{v.estado !== 'anulado' && <MarcaPartida p={v.partida} />}</td><td><MarcaEstado e={v.estado} /></td></tr>)}
     </tbody></table></div>{l.length > 120 && <p className="resumen">Se muestran los 120 más recientes. Usa la búsqueda para ver los demás.</p>}
     {v && <DetalleVale v={v} cerrar={() => setVer('')} />}</>
 }

@@ -28,12 +28,17 @@ function App() {
   useEffect(() => { const f = () => { setP(leer()); setAbierto(false); window.scrollTo(0, 0) }; addEventListener('hashchange', f); return () => removeEventListener('hashchange', f) }, [])
   // El enlace publicado corre en un marco aislado: se navega por estado y el hash es solo un extra.
   const ir = (id: string) => { setP(id); setAbierto(false); window.scrollTo(0, 0); try { history.replaceState(null, '', '#' + id) } catch { /* marco aislado */ } }
-  const [borrar, setBorrar] = useState(false)
+  const [borrar, setBorrar] = useState(false), [registros, setRegistros] = useState(false)
   const pag = PAG.find(x => x[0] === p) ?? PAG[1]
   return <div className="app">
     <aside className={abierto ? 'abierto' : ''}>
       <div className="logo"><Fuel size={26} /><span>Vales de diésel</span><button className="menu" aria-label="Menú" onClick={() => setAbierto(!abierto)}><Menu /></button></div>
-      <div className="lateral"><nav>{MENU.map(([g, l]) => <div key={g}><h3>{g}</h3>{l.map(([id, n, I]) => <a key={id} href={'#' + id} onClick={e => { e.preventDefault(); ir(id) }} aria-current={pag[0] === id ? 'page' : undefined}><I size={18} />{n}</a>)}</div>)}</nav>
+      <div className="lateral"><nav>{MENU.map(([g, l]) => {
+          const items = l.map(([id, n, I]) => <a key={id} href={'#' + id} onClick={e => { e.preventDefault(); ir(id) }} aria-current={pag[0] === id ? 'page' : undefined}><I size={18} />{n}</a>)
+          return g === 'Registros'
+            ? <details key={g} open={registros || l.some(x => x[0] === pag[0])} onToggle={e => setRegistros(e.currentTarget.open)}><summary>{g}</summary>{items}</details>
+            : <div key={g}><h3>{g}</h3>{items}</div>
+        })}</nav>
         <div className="demo"><label>Entrar como<select value={u.id} onChange={e => setUsuario(e.target.value)}>{s.usuarios.map(x => <option key={x.id} value={x.id}>{x.nombre}, {x.cargo}</option>)}</select></label>
           <p>Hoy en la demo: {fecha(s.hoy)}</p><button onClick={() => ejecutar(s => { s.hoy = sumarDias(s.hoy, 1) }, 'Nuevo día: los buses que no partieron siguen en la hoja')}>Pasar al día siguiente</button><button onBlur={() => setBorrar(false)} onClick={() => { if (borrar) reiniciar(); setBorrar(!borrar) }}>{borrar ? 'Confirmar: borrar cambios' : 'Reiniciar demo'}</button></div></div>
     </aside>
