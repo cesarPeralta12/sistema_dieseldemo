@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react'
+import { AlertTriangle, Check, Hourglass, X, type LucideIcon } from 'lucide-react'
 import type { Estado, Partida, EstadoVale, Vale } from '../dominio/tipos'
 import { litrosVale, montoVale } from '../dominio/reglas'
 import QRCode from 'qrcode'
@@ -29,8 +30,11 @@ export const de = {
   origen: (s: Estado, v: Vale) => (v.tanqueId ? s.tanques.find(t => t.id === v.tanqueId) : s.estaciones.find(e => e.id === v.estacionId))?.nombre ?? '',
 }
 
+/** Ícono de la página actual, el mismo del menú. */
+export const IconoPagina = createContext<LucideIcon | null>(null)
 export function Titulo({ t, sub, children }: { t: string; sub?: string; children?: ReactNode }) {
-  return <header className="titulo"><div><h1>{t}</h1>{sub && <p>{sub}</p>}</div><div className="acciones">{children}</div></header>
+  const I = useContext(IconoPagina)
+  return <header className="titulo"><div className="titulo-txt">{I && <span className="titulo-ico" aria-hidden="true"><I size={26} /></span>}<div><h1>{t}</h1>{sub && <p>{sub}</p>}</div></div><div className="acciones">{children}</div></header>
 }
 export function Campo({ l, children, ayuda }: { l: string; children: ReactNode; ayuda?: string }) {
   return <label className="campo"><span>{l}</span>{children}{ayuda && <small>{ayuda}</small>}</label>
@@ -40,7 +44,11 @@ export function Elegir({ v, on, ops, vacio = 'Seleccionar' }: { v: string; on(v:
 }
 const PART: Record<Partida, [string, string]> = { pendiente: ['Por partir', 'ambar'], no_partio: ['No partió', 'rojo'], partio: ['Partió', 'verde'] }
 const EST: Record<EstadoVale, [string, string]> = { pendiente: ['Sin cerrar', 'ambar'], verificado: ['Verificado', 'verde'], conciliado: ['Conciliado', 'verde'], interno: ['Surtidor interno', 'gris'], anulado: ['Anulado', 'rojo'] }
-export const Marca = ({ c, children }: { c: string; children: ReactNode }) => <span className={'marca ' + c}>{children}</span>
+const ICONO: Record<string, LucideIcon> = { verde: Check, ambar: AlertTriangle, rojo: X, gris: Hourglass }
+export const Marca = ({ c, children }: { c: string; children: ReactNode }) => {
+  const I = ICONO[c]
+  return <span className={'marca ' + c}>{I && <I size={14} strokeWidth={2.5} aria-hidden="true" />}{children}</span>
+}
 export const MarcaPartida = ({ p }: { p: Partida }) => <Marca c={PART[p][1]}>{PART[p][0]}</Marca>
 export const MarcaEstado = ({ e }: { e: EstadoVale }) => <Marca c={EST[e][1]}>{EST[e][0]}</Marca>
 export const Vacio = ({ children }: { children: ReactNode }) => <div className="vacio">{children}</div>

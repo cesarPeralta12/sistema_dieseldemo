@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronLeft, ChevronRight, Plus, Printer } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Plus, Printer } from 'lucide-react'
 import { useApp } from '../store'
 import { abastecerTanque, anularVale, comprarSinFactura, emitirVale, enAlcance, esAbierto, hojaControl, litrosVale, marcarPartida, puede, saldo, sumarDias, traspasar } from '../dominio/reglas'
 import type { Vale } from '../dominio/tipos'
@@ -36,7 +36,7 @@ export function Hoja() {
           <td><b className="interno">{de.bus(s, x.busId).interno}</b></td><td>{de.ruta(s, x.rutaId)}<span className="sec">{de.origen(s, x)}</span></td><td className="recorte" title={de.chofer(s, x.choferId)}>{de.chofer(s, x.choferId)}</td>
           <td className="n">{num(litrosVale(x))}</td><td>{x.estado === 'anulado' ? <MarcaEstado e="anulado" /> : <MarcaPartida p={partida} />}</td>
           <td className="fila-acc">{f === s.hoy && esAbierto(x) && puede(u, 'partida') && enAlcance(u, x.ciudadId) && <>
-            <button onClick={() => ejecutar((s, u) => marcarPartida(s, u, x.id, 'partio'), `Bus ${de.bus(s, x.busId).interno}: partida registrada`)}>Partió</button>
+            <button className="ok" onClick={() => ejecutar((s, u) => marcarPartida(s, u, x.id, 'partio'), `Bus ${de.bus(s, x.busId).interno}: partida registrada`)}><Check size={15} strokeWidth={2.5} />Partió</button>
             {x.partida !== 'no_partio' && <button onClick={() => ejecutar((s, u) => marcarPartida(s, u, x.id, 'no_partio'), 'Queda para la hoja de mañana')}>No partió</button>}</>}</td>
         </tr>)}</tbody></table></div>}
     {nuevo && <Emitir cerrar={() => setNuevo(false)} />}

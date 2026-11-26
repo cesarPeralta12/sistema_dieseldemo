@@ -1,18 +1,17 @@
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowLeftRight, BookOpen, Bus, CalendarCheck, Container, FileCheck2, Fuel, Gauge, HandCoins, IdCard, MapPin, Route, Scale, Ticket, Users, Menu, type LucideIcon } from 'lucide-react'
-import '@fontsource/barlow/400.css'
-import '@fontsource/barlow/500.css'
-import '@fontsource/barlow/600.css'
-import '@fontsource/bricolage-grotesque/600.css'
-import '@fontsource/bricolage-grotesque/800.css'
+import { ArrowLeftRight, BookOpen, Bus, CalendarCheck, CalendarDays, Container, FileCheck2, Fuel, Gauge, HandCoins, IdCard, MapPin, Play, RotateCcw, Route, Scale, Ticket, UserRound, Users, Menu, type LucideIcon } from 'lucide-react'
+import '@fontsource/nunito-sans/400.css'
+import '@fontsource/nunito-sans/600.css'
+import '@fontsource/nunito-sans/700.css'
+import '@fontsource/nunito-sans/800.css'
 import './estilos.css'
 import { Proveedor, useApp } from './store'
 import { sumarDias } from './dominio/reglas'
 import { Hoja, Movimientos, Vales } from './paginas/operacion'
 import { Adeudado, Conciliacion, Kardex, Resumen, Verificacion } from './paginas/control'
 import { Lista, Roles } from './paginas/catalogos'
-import { fecha } from './ui/ui'
+import { IconoPagina, fecha } from './ui/ui'
 
 const MENU: [string, [string, string, LucideIcon, () => React.ReactNode][]][] = [
   ['Operación', [['resumen', 'Resumen', Gauge, () => <Resumen />], ['hoja', 'Hoja de control', CalendarCheck, () => <Hoja />], ['vales', 'Vales emitidos', Ticket, () => <Vales />], ['movimientos', 'Otros movimientos', ArrowLeftRight, () => <Movimientos />]]],
@@ -39,10 +38,12 @@ function App() {
             ? <details key={g} open={registros || l.some(x => x[0] === pag[0])} onToggle={e => setRegistros(e.currentTarget.open)}><summary>{g}</summary>{items}</details>
             : <div key={g}><h3>{g}</h3>{items}</div>
         })}</nav>
-        <div className="demo"><label>Entrar como<select value={u.id} onChange={e => setUsuario(e.target.value)}>{s.usuarios.map(x => <option key={x.id} value={x.id}>{x.nombre}, {x.cargo}</option>)}</select></label>
-          <p>Hoy en la demo: {fecha(s.hoy)}</p><button onClick={() => ejecutar(s => { s.hoy = sumarDias(s.hoy, 1) }, 'Nuevo día: los buses que no partieron siguen en la hoja')}>Pasar al día siguiente</button><button onBlur={() => setBorrar(false)} onClick={() => { if (borrar) reiniciar(); setBorrar(!borrar) }}>{borrar ? 'Confirmar: borrar cambios' : 'Reiniciar demo'}</button></div></div>
+        <div className="demo"><label>Entrar como<span className="usuario"><UserRound size={16} aria-hidden="true" /><select value={u.id} onChange={e => setUsuario(e.target.value)}>{s.usuarios.map(x => <option key={x.id} value={x.id}>{x.nombre}, {x.cargo}</option>)}</select></span></label>
+          <p><CalendarDays size={15} aria-hidden="true" />Hoy en la demo: {fecha(s.hoy)}</p>
+          <button className="dia-sig" onClick={() => ejecutar(s => { s.hoy = sumarDias(s.hoy, 1) }, 'Nuevo día: los buses que no partieron siguen en la hoja')}><Play size={15} fill="currentColor" />Pasar al día siguiente</button>
+          <button className="reiniciar" onBlur={() => setBorrar(false)} onClick={() => { if (borrar) reiniciar(); setBorrar(!borrar) }}><RotateCcw size={15} />{borrar ? 'Confirmar: borrar cambios' : 'Reiniciar demo'}</button></div></div>
     </aside>
-    <main key={u.id + s.hoy + pag[0]}>{pag[3]()}</main>
+    <IconoPagina.Provider value={pag[2]}><main key={u.id + s.hoy + pag[0]}>{pag[3]()}</main></IconoPagina.Provider>
     <div className="avisos" popover="manual" ref={e => { if (e) { if (aviso) { e.hidePopover(); e.showPopover() } else e.hidePopover() } }} role="status">{aviso && <div className={aviso.error ? 'error' : ''}>{aviso.texto}</div>}</div>
   </div>
 }
